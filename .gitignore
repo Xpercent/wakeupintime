@@ -1,0 +1,29 @@
+# Flutter and Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.pub-cache/
+build/
+
+# Platform-generated files
+android/.gradle/
+android/local.properties
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/.symlinks/
+ios/Runner.xcworkspace/
+ios/Podfile.lock
+
+# Signing material and editor files
+*.p12
+*.mobileprovision
+*.pem
+*.key
+*.cer
+.idea/
+.vscode/
