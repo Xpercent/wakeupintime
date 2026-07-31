@@ -24,7 +24,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   final zone = await FlutterTimezone.getLocalTimezone();
-  tz.setLocalLocation(tz.getLocation(zone.name));
+  tz.setLocalLocation(tz.getLocation(zone.identifier));
 
   await notifications.initialize(
     const InitializationSettings(
