@@ -30,7 +30,17 @@ jobs:
         run: flutter pub get
 
       - name: Build unsigned iOS app
-        run: flutter build ios --release --no-codesign
+        run: |
+          # Flutter 3.44 validates a Development Team after Xcode has already
+          # produced the unsigned Runner.app. Preserve that valid artifact.
+          set +e
+          flutter build ios --release --no-codesign
+          FLUTTER_EXIT_CODE=$?
+          set -e
+          if [ "$FLUTTER_EXIT_CODE" -ne 0 ] && [ ! -d build/ios/iphoneos/Runner.app ]; then
+            exit "$FLUTTER_EXIT_CODE"
+          fi
+          test -d build/ios/iphoneos/Runner.app
 
       - name: Package unsigned IPA
         run: |
