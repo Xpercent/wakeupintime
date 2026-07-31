@@ -31,22 +31,29 @@ jobs:
 
       - name: Build unsigned iOS app
         run: |
-          # Flutter 3.44 validates a Development Team after Xcode has already
-          # produced the unsigned Runner.app. Preserve that valid artifact.
+          # Flutter prepares Dart assets and Pods, but 3.44 rejects the build
+          # after Xcode finishes when no Development Team is configured.
           set +e
           flutter build ios --release --no-codesign
-          FLUTTER_EXIT_CODE=$?
           set -e
-          if [ "$FLUTTER_EXIT_CODE" -ne 0 ] && [ ! -d build/ios/iphoneos/Runner.app ]; then
-            exit "$FLUTTER_EXIT_CODE"
-          fi
-          test -d build/ios/iphoneos/Runner.app
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios/unsigned \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build
+          test -d build/ios/unsigned/Build/Products/Release-iphoneos/Runner.app
 
       - name: Package unsigned IPA
         run: |
           IPA_DIR="build/ios/ipa"
           mkdir -p "$IPA_DIR/Payload"
-          cp -R build/ios/iphoneos/Runner.app "$IPA_DIR/Payload/Runner.app"
+          cp -R build/ios/unsigned/Build/Products/Release-iphoneos/Runner.app "$IPA_DIR/Payload/Runner.app"
           cd "$IPA_DIR"
           zip -qry WakeUpInTime-unsigned.ipa Payload
 
