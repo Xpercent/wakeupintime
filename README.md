@@ -33,12 +33,6 @@ The detector counts a down/up cycle from the nose-to-shoulder vertical distance.
 
 ## GitHub Actions IPA build
 
-The workflow at `.github/workflows/ios-ipa.yml` creates a signed release IPA on `main`, version tags, or manual dispatch. Add these repository Actions secrets before running it:
+The workflow at `.github/workflows/ios-ipa.yml` creates an unsigned release IPA on `main`, version tags, or manual dispatch. It does not require Apple signing secrets and uploads `wakeup-in-time-unsigned-ipa` as an Actions artifact.
 
-- `BUILD_CERTIFICATE_BASE64`: base64-encoded Apple Distribution `.p12` certificate.
-- `P12_PASSWORD`: password used to export that certificate.
-- `BUILD_PROVISION_PROFILE_BASE64`: base64-encoded App Store, Ad Hoc, or Development provisioning profile.
-- `KEYCHAIN_PASSWORD`: a random CI-only keychain password.
-- `EXPORT_OPTIONS_PLIST_BASE64`: base64-encoded export options plist matching the profile and distribution method.
-
-The IPA is retained as the `wakeup-in-time-ipa` Actions artifact. Never commit certificates, provisioning profiles, export files containing team data, or API keys.
+For standard iOS installation, build a signed IPA with an Apple Distribution certificate and provisioning profile. This workflow's output is specifically intended for a loader that supports unsigned apps, such as the user's LiveContainer setup.

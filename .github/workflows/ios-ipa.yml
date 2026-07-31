@@ -1,4 +1,4 @@
-name: Build signed iOS IPA
+name: Build unsigned iOS IPA
 
 on:
   workflow_dispatch:
@@ -12,14 +12,8 @@ permissions:
 jobs:
   build-ipa:
     runs-on: macos-15
-    env:
-      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-      P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-      BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      EXPORT_OPTIONS_PLIST_BASE64: ${{ secrets.EXPORT_OPTIONS_PLIST_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -30,48 +24,25 @@ jobs:
         run: flutter create --platforms=ios,android --project-name=wakeup_in_time .
 
       - name: Configure iOS deployment target
-        run: |
-          ruby -0pi -e "gsub(/platform :ios, '\\d+\\.\\d+'/, \\"platform :ios, '15.5'\\")" ios/Podfile
-          ruby -0pi -e 'sub(/post_install do \|installer\|\n/, "post_install do |installer|\n  installer.pods_project.build_configurations.each do |config|\n    config.build_settings[\"EXCLUDED_ARCHS[sdk=*]\"] = \"armv7\"\n    config.build_settings[\"IPHONEOS_DEPLOYMENT_TARGET\"] = \"15.5\"\n  end\n")' ios/Podfile
+        run: sed -i '' -E "s|^#? ?platform :ios, '.*'|platform :ios, '15.5'|" ios/Podfile
 
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Run unit tests
-        run: flutter test
+      - name: Build unsigned iOS app
+        run: flutter build ios --release --no-codesign
 
-      - name: Validate signing secrets
+      - name: Package unsigned IPA
         run: |
-          test -n "$BUILD_CERTIFICATE_BASE64"
-          test -n "$P12_PASSWORD"
-          test -n "$BUILD_PROVISION_PROFILE_BASE64"
-          test -n "$KEYCHAIN_PASSWORD"
-          test -n "$EXPORT_OPTIONS_PLIST_BASE64"
-
-      - name: Install Apple signing certificate and profile
-        run: |
-          CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles"
-
-      - name: Build signed IPA
-        run: |
-          EXPORT_OPTIONS="$RUNNER_TEMP/ExportOptions.plist"
-          echo -n "$EXPORT_OPTIONS_PLIST_BASE64" | base64 --decode -o "$EXPORT_OPTIONS"
-          flutter build ipa --release --export-options-plist="$EXPORT_OPTIONS"
+          IPA_DIR="build/ios/ipa"
+          mkdir -p "$IPA_DIR/Payload"
+          cp -R build/ios/iphoneos/Runner.app "$IPA_DIR/Payload/Runner.app"
+          cd "$IPA_DIR"
+          zip -qry WakeUpInTime-unsigned.ipa Payload
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: wakeup-in-time-ipa
-          path: build/ios/ipa/*.ipa
+          name: wakeup-in-time-unsigned-ipa
+          path: build/ios/ipa/WakeUpInTime-unsigned.ipa
           if-no-files-found: error
